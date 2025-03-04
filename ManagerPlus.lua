@@ -97,6 +97,70 @@ f:SetScript("OnUpdate", function()
 end)
 
 -- ====================================================================================================
+-- =                                          Slash commands                                          =
+-- ====================================================================================================
+
+SLASH_MANAGERPLUS1 = "/m+", "mp", "/managerplus";
+SlashCmdList["MANAGERPLUS"] = function(msg)
+
+    -- 
+    local command, playerName, reason = string.match(msg, "^(ban)%s+(%S+)%s+(.+)$");
+
+    if (command == "ban") and (playerName) and (reason) then
+
+        -- Did we find the person in GUILD_INFO ?
+        if (GUILD_INFO[playerName]) then
+        -- Ban the player (replace with your actual ban logic)
+        DEFAULT_CHAT_FRAME:AddMessage("Banning " .. playerName .. ". Reason: " .. reason);
+
+        -- Save all the info we have about the person so we can stop him from coming back.
+        BANNED_FROM_GUILD[playerName] = {
+            ["LeftTheGuild"] = date(),
+            ["Rank"] = GUILD_INFO[playerName]["Rank"],
+            ["PublicNote"] = GUILD_INFO[playerName]["PublicNote"],
+            ["OfficerNote"] = GUILD_INFO[playerName]["OfficerNote"],
+            ["RankIndex"] = GUILD_INFO[playerName]["RankIndex"],
+            ["BanReason"] = reason,
+            ["Updated"] = date(),
+            ["GuildName"] = GUILD_INFO[playerName]["GuildName"],
+            ["SeenFirstTime"] = GUILD_INFO[playerName]["SeenFirstTime"],
+            ["Level"] = GUILD_INFO[playerName]["Level"],
+            ["Class"] = GUILD_INFO[playerName]["Class"],
+        };
+
+        -- Save it all in GUILD_INFO_HISTORY also.
+        GUILD_INFO_HISTORY[playerName] = {
+            ["Banned"] = true,
+            ["BanReason"] = reason,
+            ["GuildName"] = strGuildName,
+            ["SeenFirstTime"] = GUILD_INFO[playerName]["SeenFirstTime"],
+            ["Rank"] = GUILD_INFO[playerName]["Rank"],
+            ["RankIndex"] = GUILD_INFO[playerName]["RankIndex"],
+            ["Level"] = GUILD_INFO[playerName]["Level"],
+            ["Class"] = GUILD_INFO[playerName]["Class"],
+            ["Offline"] = GUILD_INFO[playerName]["Offline"],
+            ["PublicNote"] = GUILD_INFO[playerName]["PublicNote"],
+            ["OfficerNote"] = GUILD_INFO[playerName]["OfficerNote"],
+            ["LeftTheGuild"] = date(),
+            ["Updated"] = date(),
+        };
+
+        -- Delete the person from GUILD_INFO
+        -- GUILD_INFO[playerName] = nil
+
+        -- Kick the player
+        -- GuildUninvite(playerName);
+        else
+            DEFAULT_CHAT_FRAME:AddMessage("The player \"" .. playerName .. "\" was not found in guild.");
+        end
+    elseif (msg == "") then
+        GuildUpdateRoster();
+    else
+        DEFAULT_CHAT_FRAME:AddMessage("Usage: /m+ ban PlayerName Reason");
+    end
+end;
+
+-- ====================================================================================================
 -- =                                  Color the name by class color.                                  =
 -- ====================================================================================================
 
@@ -208,7 +272,7 @@ function GuildUpdateRoster()
     -- Iterate through all members in the saved variable GUILD_INFO.
     for playerName, playerData in pairs(GUILD_INFO) do
         -- Check if we have the same names in both tables and it's the correct guild.
-        if (ShowPopUp == true) and (not TEMP_GUILD_INFO[playerName]) and (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
+        if (GUILD_INFO[playerName]) and (ShowPopUp == true) and (not TEMP_GUILD_INFO[playerName]) and (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
             -- Someone left, add that info to GUILD_INFO_HISTORY, but make sure it's made first.
             if (not GUILD_INFO_HISTORY) or (type(GUILD_INFO_HISTORY) ~= "table") then
                 GUILD_INFO_HISTORY = {}
@@ -244,7 +308,7 @@ function GuildUpdateRoster()
 -- =============================== Did someone get promoted or demoted? ===============================
 
         -- Did the rank change and is it someone in current guild ?
-        if (ShowPopUp == true) and (TEMP_GUILD_INFO[playerName]["RankIndex"]) and ((GUILD_INFO[playerName]["RankIndex"] ~= TEMP_GUILD_INFO[playerName]["RankIndex"]) and (GUILD_INFO[playerName]["GuildName"] == strGuildName)) then
+        if (GUILD_INFO[playerName]) and (ShowPopUp == true) and ((GUILD_INFO[playerName]["RankIndex"] ~= TEMP_GUILD_INFO[playerName]["RankIndex"]) and (GUILD_INFO[playerName]["GuildName"] == strGuildName)) then
             -- Is the new RankIndex from TEMP_GUILD_INFO smaller than the RankIndex in GUILD_INFO ? (Smaller is promote, Guild Master is RankIndex 0)
             if (TEMP_GUILD_INFO[playerName]["RankIndex"] < GUILD_INFO[playerName]["RankIndex"]) then
                 -- Count.
@@ -281,14 +345,14 @@ function GuildUpdateRoster()
 -- ================================== Is it time to promote someone? ==================================
 
         -- Has someone been in the guild for the amount of days there is requred to be promoted ?
-        if (ShowPopUp == true) and (TimeToPromote) and (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
+        if (GUILD_INFO[playerName]) and (ShowPopUp == true) and (TimeToPromote) and (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
             
         end
 
 -- ====================================== Did someone level up ? ======================================
 
         -- Did player level change and is it someone from this guild ?
-        if (ShowPopUp == true) and (GUILD_INFO[playerName]["Level"] ~= TEMP_GUILD_INFO[playerName]["Level"]) and (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
+        if (GUILD_INFO[playerName]) and (ShowPopUp == true) and (GUILD_INFO[playerName]["Level"] ~= TEMP_GUILD_INFO[playerName]["Level"]) and (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
             -- Update GUILD_INFO
             GUILD_INFO[playerName].Level = TEMP_GUILD_INFO[playerName]["Level"]
             GUILD_INFO[playerName].Updated = date()
@@ -297,7 +361,7 @@ function GuildUpdateRoster()
 -- ===================================== Did public note change ? =====================================
 
         -- Did the Public note change and is it someone from this guild ?
-        if (ShowPopUp == true) and (GUILD_INFO[playerName]["PublicNote"] ~= TEMP_GUILD_INFO[playerName]["PublicNote"]) and  (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
+        if (GUILD_INFO[playerName]) and (ShowPopUp == true) and (GUILD_INFO[playerName]["PublicNote"] ~= TEMP_GUILD_INFO[playerName]["PublicNote"]) and  (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
             -- Update GUILD_INFO
             GUILD_INFO[playerName].PublicNote = TEMP_GUILD_INFO[playerName]["PublicNote"]
             GUILD_INFO[playerName].Updated = date()
@@ -306,7 +370,7 @@ function GuildUpdateRoster()
 -- ===================================== Did officer note change? =====================================
 
         -- Did officer note change and is it someone from this guild ?
-        if (GUILD_INFO[playerName]["OfficerNote"] ~= TEMP_GUILD_INFO[playerName]["OfficerNote"]) and  (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
+        if (GUILD_INFO[playerName]) and (GUILD_INFO[playerName]["OfficerNote"] ~= TEMP_GUILD_INFO[playerName]["OfficerNote"]) and  (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
             -- Count
             OfficerNoteCounter = OfficerNoteCounter + 1
 
@@ -328,25 +392,25 @@ function GuildUpdateRoster()
             -- A local
             local FoundSomeone = false
             -- 
-            if (GUILD_INFO[playerName]["RankIndex"] == 0) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex0) then
+            if (GUILD_INFO[playerName]) and (GUILD_INFO[playerName]["RankIndex"] == 0) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex0) then
                 FoundSomeone = true
-            elseif (GUILD_INFO[playerName]["RankIndex"] == 1) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex1) then
+            elseif (GUILD_INFO[playerName]) and (GUILD_INFO[playerName]["RankIndex"] == 1) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex1) then
                 FoundSomeone = true
-            elseif (GUILD_INFO[playerName]["RankIndex"] == 2) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex2) then
+            elseif (GUILD_INFO[playerName]) and (GUILD_INFO[playerName]["RankIndex"] == 2) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex2) then
                 FoundSomeone = true
-            elseif (GUILD_INFO[playerName]["RankIndex"] == 3) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex3) then
+            elseif (GUILD_INFO[playerName]) and (GUILD_INFO[playerName]["RankIndex"] == 3) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex3) then
                 FoundSomeone = true
-            elseif (GUILD_INFO[playerName]["RankIndex"] == 4) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex4) then
+            elseif (GUILD_INFO[playerName]) and (GUILD_INFO[playerName]["RankIndex"] == 4) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex4) then
                 FoundSomeone = true
-            elseif (GUILD_INFO[playerName]["RankIndex"] == 5) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex5) then
+            elseif (GUILD_INFO[playerName]) and (GUILD_INFO[playerName]["RankIndex"] == 5) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex5) then
                 FoundSomeone = true
-            elseif (GUILD_INFO[playerName]["RankIndex"] == 6) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex6) then
+            elseif (GUILD_INFO[playerName]) and (GUILD_INFO[playerName]["RankIndex"] == 6) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex6) then
                 FoundSomeone = true
-            elseif (GUILD_INFO[playerName]["RankIndex"] == 7) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex7) then
+            elseif (GUILD_INFO[playerName]) and (GUILD_INFO[playerName]["RankIndex"] == 7) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex7) then
                 FoundSomeone = true
-            elseif (GUILD_INFO[playerName]["RankIndex"] == 8) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex8) then
+            elseif (GUILD_INFO[playerName]) and (GUILD_INFO[playerName]["RankIndex"] == 8) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex8) then
                 FoundSomeone = true
-            elseif (GUILD_INFO[playerName]["RankIndex"] == 9) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex9) then
+            elseif (GUILD_INFO[playerName]) and (GUILD_INFO[playerName]["RankIndex"] == 9) and (TEMP_GUILD_INFO[playerName]["Offline"] >= intKickRankIndex9) then
                 FoundSomeone = true
             else
                 -- Update everything in GUILD_INFOthere is not updated anyware else.
