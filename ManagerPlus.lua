@@ -62,6 +62,16 @@ f:SetScript("OnEvent", function(self, event, arg1, ...)
         GuildRoster();
         -- Get the guild name of the guild we are in, if any.
         strGuildName = GetGuildInfo("player");
+        -- Do we have a table to save guild info, if not then we create it.
+        if (not GUILD_INFO) or (not type(GUILD_INFO) == "table") then
+            GUILD_INFO = {}
+        end
+        if (not BANNED_FROM_GUILD) or (not type(BANNED_FROM_GUILD) == "table") then
+            BANNED_FROM_GUILD = {}
+        end
+        if (not GUILD_INFO_HISTORY) or (not type(GUILD_INFO_HISTORY) == "table") then
+            GUILD_INFO_HISTORY = {}
+        end
         -- Unregister the event as we don't need it anymore.
         f:UnregisterEvent("ADDON_LOADED");
     elseif event == "GUILD_ROSTER_UPDATE" then
@@ -99,8 +109,7 @@ end)
 -- ====================================================================================================
 -- =                                          Slash commands                                          =
 -- ====================================================================================================
-
-SLASH_MANAGERPLUS1 = "/m+", "mp", "/managerplus";
+SLASH_MANAGERPLUS1 = "/m+", "/mp", "/managerplus";
 SlashCmdList["MANAGERPLUS"] = function(msg)
 
     -- 
@@ -110,49 +119,52 @@ SlashCmdList["MANAGERPLUS"] = function(msg)
 
         -- Did we find the person in GUILD_INFO ?
         if (GUILD_INFO[playerName]) then
-        -- Ban the player (replace with your actual ban logic)
-        DEFAULT_CHAT_FRAME:AddMessage("Banning " .. playerName .. ". Reason: " .. reason);
 
-        -- Save all the info we have about the person so we can stop him from coming back.
-        BANNED_FROM_GUILD[playerName] = {
-            ["LeftTheGuild"] = date(),
-            ["Rank"] = GUILD_INFO[playerName]["Rank"],
-            ["PublicNote"] = GUILD_INFO[playerName]["PublicNote"],
-            ["OfficerNote"] = GUILD_INFO[playerName]["OfficerNote"],
-            ["RankIndex"] = GUILD_INFO[playerName]["RankIndex"],
-            ["BanReason"] = reason,
-            ["Updated"] = date(),
-            ["GuildName"] = GUILD_INFO[playerName]["GuildName"],
-            ["SeenFirstTime"] = GUILD_INFO[playerName]["SeenFirstTime"],
-            ["Level"] = GUILD_INFO[playerName]["Level"],
-            ["Class"] = GUILD_INFO[playerName]["Class"],
-        };
+            -- Send a message to guild about it.
+            SendChatMessage("Banning " .. playerName .. " from guild.", "GUILD");
+            SendChatMessage("Reason: " .. reason, "GUILD");
 
-        -- Save it all in GUILD_INFO_HISTORY also.
-        GUILD_INFO_HISTORY[playerName] = {
-            ["Banned"] = true,
-            ["BanReason"] = reason,
-            ["GuildName"] = strGuildName,
-            ["SeenFirstTime"] = GUILD_INFO[playerName]["SeenFirstTime"],
-            ["Rank"] = GUILD_INFO[playerName]["Rank"],
-            ["RankIndex"] = GUILD_INFO[playerName]["RankIndex"],
-            ["Level"] = GUILD_INFO[playerName]["Level"],
-            ["Class"] = GUILD_INFO[playerName]["Class"],
-            ["Offline"] = GUILD_INFO[playerName]["Offline"],
-            ["PublicNote"] = GUILD_INFO[playerName]["PublicNote"],
-            ["OfficerNote"] = GUILD_INFO[playerName]["OfficerNote"],
-            ["LeftTheGuild"] = date(),
-            ["Updated"] = date(),
-        };
+            -- Save all the info we have about the person so we can stop him from coming back.
+            BANNED_FROM_GUILD[playerName] = {
+                ["LeftTheGuild"] = date(),
+                ["Rank"] = GUILD_INFO[playerName]["Rank"],
+                ["PublicNote"] = GUILD_INFO[playerName]["PublicNote"],
+                ["OfficerNote"] = GUILD_INFO[playerName]["OfficerNote"],
+                ["RankIndex"] = GUILD_INFO[playerName]["RankIndex"],
+                ["BanReason"] = reason,
+                ["Updated"] = date(),
+                ["GuildName"] = GUILD_INFO[playerName]["GuildName"],
+                ["SeenFirstTime"] = GUILD_INFO[playerName]["SeenFirstTime"],
+                ["Level"] = GUILD_INFO[playerName]["Level"],
+                ["Class"] = GUILD_INFO[playerName]["Class"],
+            };
 
-        -- Delete the person from GUILD_INFO
-        -- GUILD_INFO[playerName] = nil
+            -- Save it all in GUILD_INFO_HISTORY also.
+            GUILD_INFO_HISTORY[playerName] = {
+                ["Banned"] = true,
+                ["BanReason"] = reason,
+                ["GuildName"] = strGuildName,
+                ["SeenFirstTime"] = GUILD_INFO[playerName]["SeenFirstTime"],
+                ["Rank"] = GUILD_INFO[playerName]["Rank"],
+                ["RankIndex"] = GUILD_INFO[playerName]["RankIndex"],
+                ["Level"] = GUILD_INFO[playerName]["Level"],
+                ["Class"] = GUILD_INFO[playerName]["Class"],
+                ["Offline"] = GUILD_INFO[playerName]["Offline"],
+                ["PublicNote"] = GUILD_INFO[playerName]["PublicNote"],
+                ["OfficerNote"] = GUILD_INFO[playerName]["OfficerNote"],
+                ["LeftTheGuild"] = date(),
+                ["Updated"] = date(),
+            };
 
-        -- Kick the player
-        -- GuildUninvite(playerName);
+            -- Delete the person from GUILD_INFO
+            GUILD_INFO[playerName] = nil
+
+            -- Kick the player (We can't kick a guild member from a addon, so we need new way.)
+            -- SendChatMessage("/gkick " .. playerName, "GUILD");
         else
             DEFAULT_CHAT_FRAME:AddMessage("The player \"" .. playerName .. "\" was not found in guild.");
         end
+
     elseif (msg == "") then
         GuildUpdateRoster();
     else
@@ -370,7 +382,7 @@ function GuildUpdateRoster()
 -- ===================================== Did officer note change? =====================================
 
         -- Did officer note change and is it someone from this guild ?
-        if (GUILD_INFO[playerName]) and (GUILD_INFO[playerName]["OfficerNote"] ~= TEMP_GUILD_INFO[playerName]["OfficerNote"]) and  (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
+        if ((GUILD_INFO[playerName]) and (TEMP_GUILD_INFO[playerName])) and (GUILD_INFO[playerName]["OfficerNote"] ~= TEMP_GUILD_INFO[playerName]["OfficerNote"]) and (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
             -- Count
             OfficerNoteCounter = OfficerNoteCounter + 1
 
@@ -388,7 +400,7 @@ function GuildUpdateRoster()
 -- ============================== Has someone been offline for to long ? ==============================
 
         -- We need to check everyone in the guild, so we start with checking that it is someone from the guild.
-        if (ShowPopUp == true) and (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
+        if (GUILD_INFO[playerName]) and (ShowPopUp == true) and (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
             -- A local
             local FoundSomeone = false
             -- 
@@ -453,33 +465,58 @@ function GuildUpdateRoster()
 -- =================================== Did someone join the guild ? ===================================
 
         -- Check if we have the same names in both tables and it's the correct guild.
-        if (ShowPopUp == true) and (not GUILD_INFO[playerName]) and (TEMP_GUILD_INFO[playerName]["GuildName"] == strGuildName) then
+        if (not GUILD_INFO[playerName]) and (TEMP_GUILD_INFO[playerName]["GuildName"] == strGuildName) then
             -- Someone joined the guild, add that info to GUILD_INFO, but make sure it's made first.
             if (not GUILD_INFO) or (type(GUILD_INFO) ~= "table") then
                 GUILD_INFO = {}
             end
-            -- 
-            GUILD_INFO[playerName] = {
-                ["GuildName"] = strGuildName,
-                ["SeenFirstTime"] = date(),
-                ["Rank"] = TEMP_GUILD_INFO[playerName]["Rank"],
-                ["RankIndex"] = TEMP_GUILD_INFO[playerName]["RankIndex"],
-                ["Level"] = TEMP_GUILD_INFO[playerName]["Level"],
-                ["Class"] = TEMP_GUILD_INFO[playerName]["Class"],
-                ["PublicNote"] = TEMP_GUILD_INFO[playerName]["PublicNote"],
-                ["OfficerNote"] = TEMP_GUILD_INFO[playerName]["OfficerNote"],
-                ["Offline"] = TEMP_GUILD_INFO[playerName]["Offline"],
-                ["Updated"] = date(),
-            };
-
-            -- Count
-            JoinCounter = JoinCounter + 1
-
-            -- Check if it's the first line
-            if (JoinCounter == 1) then
-                NewGuildActionJoin = "----- JOINED THE GUILD -----\n"
+            if (not BANNED_FROM_GUILD) or (type(BANNED_FROM_GUILD) ~= "table") then
+                BANNED_FROM_GUILD = {}
             end
-            NewGuildActionJoin = NewGuildActionJoin .. "The " .. playerData.Class .. " " .. Manager_ColorTheName(playerData.Class, playerName) .. " (" .. playerData.Level .. ") (" .. playerData.Rank .. ") has joined the guild.\n"
+
+            -- Check if it a person there is banned from the guild, if so, then inform and kick.
+            if (BANNED_FROM_GUILD[playerName]) then
+                -- Get a date people understand.
+                local TimeStamp = BANNED_FROM_GUILD[playerName]["LeftTheGuild"]
+                local FormatedTimeStamp
+                if TimeStamp then
+                    FormatedTimeStamp = date("%d-%B-%Y", TimeStamp)
+                end
+
+                -- Send a message to guild about it.
+                SendChatMessage(playerName .. " was banned from the guild on " .. FormatedTimeStamp, "GUILD");
+                SendChatMessage("Reason: " .. BANNED_FROM_GUILD[playerName]["BanReason"], "GUILD");
+                SendChatMessage("That is why " .. playerName .. " is kicked again.", "GUILD");
+
+            -- The person was not banned, add to GUILD_INFO.
+            else
+                -- Only do it if we want to show it.
+                if (ShowPopUp == true) then
+
+                    -- 
+                    GUILD_INFO[playerName] = {
+                        ["GuildName"] = strGuildName,
+                        ["SeenFirstTime"] = date(),
+                        ["Rank"] = TEMP_GUILD_INFO[playerName]["Rank"],
+                        ["RankIndex"] = TEMP_GUILD_INFO[playerName]["RankIndex"],
+                        ["Level"] = TEMP_GUILD_INFO[playerName]["Level"],
+                        ["Class"] = TEMP_GUILD_INFO[playerName]["Class"],
+                        ["PublicNote"] = TEMP_GUILD_INFO[playerName]["PublicNote"],
+                        ["OfficerNote"] = TEMP_GUILD_INFO[playerName]["OfficerNote"],
+                        ["Offline"] = TEMP_GUILD_INFO[playerName]["Offline"],
+                        ["Updated"] = date(),
+                    };
+
+                    -- Count
+                    JoinCounter = JoinCounter + 1
+
+                    -- Check if it's the first line
+                    if (JoinCounter == 1) then
+                        NewGuildActionJoin = "----- JOINED THE GUILD -----\n"
+                    end
+                    NewGuildActionJoin = NewGuildActionJoin .. "The " .. playerData.Class .. " " .. Manager_ColorTheName(playerData.Class, playerName) .. " (" .. playerData.Level .. ") (" .. playerData.Rank .. ") has joined the guild.\n"
+                end
+            end
         end
     end
 
