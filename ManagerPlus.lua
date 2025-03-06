@@ -1,5 +1,5 @@
 -- Some locals
-local AddonName = "Manager+"                        -- Addon name.
+local AddonName = "ManagerPlus"                        -- Addon name.
 local LogInTime = GetTime()                         -- Used for the welcome message and when the frame has to be shown.
 local RunFirstGuildCheck = true                     -- True so we know when to run first check.
 local RunFirstGuildCheckTime = GetTime()            -- Used for running the first check of the guild.
@@ -7,6 +7,7 @@ local RunTime = GetTime()                           -- Used for how often we hav
 local SayWelcome = true                             -- Do we want to show the welcome message and the frame with updates.
 local strGuildName                                  -- To save our guild name.
 local ShowPopUp = true                              -- Used for deciding if we show the popup or not.
+
 local NewGuildAction                                -- Used to collect all new text about the guild.
 local NewGuildActionLeft                            -- Used for the text about someone who left the guild.
 local NewGuildActionJoin                            -- Used for the text about someone who joined the guild.
@@ -14,12 +15,14 @@ local NewGuildActionPromote                         -- Used for the text about s
 local NewGuildActionDemote                          -- Used for the text about someone who got demoted in the guild.
 local NewGuildActionKick                            -- Used for the text about someone who have been offline for to long and have to be kicked.
 local NewGuildActionOfficerNote                     -- Used for the text about someone who had Officer note changed.
+
 local JoinCounter                                   -- Used for checking if we want a headline or not.
 local LeaveCounter                                  -- Used for checking if we want a headline or not.
 local PromoteCounter                                -- Used for checking if we want a headline or not.
 local DemoteCounter                                 -- Used for checking if we want a headline or not.
 local KickCounter                                   -- Used for checking if we want a headline or not.
 local OfficerNoteCounter                            -- Used for checking if we want a headline or not.
+local TotalCountedLines = 0                         -- Used in interface to see how big the scroll frame have to be.
 
 local intKickRankIndex0 = intKickRankIndex0 or 90   -- Kick Guild Master after this amount of days.
 local intKickRankIndex1 = intKickRankIndex1 or 30   -- Kick Officer after this amount of days.
@@ -34,7 +37,7 @@ local intKickRankIndex9 = intKickRankIndex9 or 1    -- Kick Unknown after this a
 
 local TimeToPromote = TimeToPromote or 14           -- When someone should be promoted from the trial rank.
 
--- Create frame.
+-- Create frames.
 local f = CreateFrame("Frame")
 -- Create the main frame
 local myFrame = CreateFrame("Frame", "MySimpleFrame", UIParent);
@@ -62,7 +65,7 @@ f:SetScript("OnEvent", function(self, event, arg1, ...)
         GuildRoster();
         -- Get the guild name of the guild we are in, if any.
         strGuildName = GetGuildInfo("player");
-        -- Do we have a table to save guild info, if not then we create it.
+        -- Do we have the tables we need to save guild info, if not then we create them.
         if (not GUILD_INFO) or (not type(GUILD_INFO) == "table") then
             GUILD_INFO = {}
         end
@@ -87,12 +90,13 @@ end);
 
 f:SetScript("OnUpdate", function()
 
+    -- Say hello to the user.
     if ((LogInTime + 4) < GetTime()) and (SayWelcome == true) then
         DEFAULT_CHAT_FRAME:AddMessage("|cff3333ff" .. AddonName .. " by " .. "|r" .. "|cFF06c51b" .. "Subby" .. "|r" .. "|cff3333ff" .. " is loaded." .. "|r");
         SayWelcome = false
     end
 
-    -- Run the roster for the first time
+    -- Run the roster for the first time.
     if ((RunFirstGuildCheckTime + 20) < GetTime()) and (RunFirstGuildCheck == true) then
         GuildUpdateRoster()
         RunFirstGuildCheck = false
@@ -100,7 +104,11 @@ f:SetScript("OnUpdate", function()
 
     -- Update the roster every 5 min.
     if ((RunTime + 300) < GetTime()) then
-        GuildUpdateRoster()
+        -- Check if we are in a raid as we don't want it to run there, maybe it will give us a little lag, who knows.
+        if (GetNumRaidMembers() == 0) then
+            GuildUpdateRoster()
+        end
+        -- Reset timer.
         RunTime = GetTime()
     end
 
@@ -166,6 +174,7 @@ SlashCmdList["MANAGERPLUS"] = function(msg)
         end
 
     elseif (msg == "") then
+        ShowPopUp = true
         GuildUpdateRoster();
     else
         DEFAULT_CHAT_FRAME:AddMessage("Usage: /m+ ban PlayerName Reason");
@@ -232,10 +241,6 @@ function GuildUpdateRoster()
     NewGuildActionDemote = nil
     NewGuildActionKick = nil
 
-    -- Do we have a table to save guild info, if not then we create it.
-    if (not GUILD_INFO) or (not type(GUILD_INFO) == "table") then
-        GUILD_INFO = {}
-    end
     -- Make sure that TEMP_GUILD_INFO is empty so we don't get old info.
     TEMP_GUILD_INFO = {}
 
@@ -285,10 +290,6 @@ function GuildUpdateRoster()
     for playerName, playerData in pairs(GUILD_INFO) do
         -- Check if we have the same names in both tables and it's the correct guild.
         if (GUILD_INFO[playerName]) and (ShowPopUp == true) and (not TEMP_GUILD_INFO[playerName]) and (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
-            -- Someone left, add that info to GUILD_INFO_HISTORY, but make sure it's made first.
-            if (not GUILD_INFO_HISTORY) or (type(GUILD_INFO_HISTORY) ~= "table") then
-                GUILD_INFO_HISTORY = {}
-            end
             -- Save the info in GUILD_INFO_HISTORY about old members.
             GUILD_INFO_HISTORY[playerName] = {
                 ["GuildName"] = strGuildName,
@@ -320,7 +321,7 @@ function GuildUpdateRoster()
 -- =============================== Did someone get promoted or demoted? ===============================
 
         -- Did the rank change and is it someone in current guild ?
-        if (GUILD_INFO[playerName]) and (ShowPopUp == true) and ((GUILD_INFO[playerName]["RankIndex"] ~= TEMP_GUILD_INFO[playerName]["RankIndex"]) and (GUILD_INFO[playerName]["GuildName"] == strGuildName)) then
+        if ((GUILD_INFO[playerName]) and (TEMP_GUILD_INFO[playerName])) and (ShowPopUp == true) and ((GUILD_INFO[playerName]["RankIndex"] ~= TEMP_GUILD_INFO[playerName]["RankIndex"]) and (GUILD_INFO[playerName]["GuildName"] == strGuildName)) then
             -- Is the new RankIndex from TEMP_GUILD_INFO smaller than the RankIndex in GUILD_INFO ? (Smaller is promote, Guild Master is RankIndex 0)
             if (TEMP_GUILD_INFO[playerName]["RankIndex"] < GUILD_INFO[playerName]["RankIndex"]) then
                 -- Count.
@@ -364,7 +365,7 @@ function GuildUpdateRoster()
 -- ====================================== Did someone level up ? ======================================
 
         -- Did player level change and is it someone from this guild ?
-        if (GUILD_INFO[playerName]) and (ShowPopUp == true) and (GUILD_INFO[playerName]["Level"] ~= TEMP_GUILD_INFO[playerName]["Level"]) and (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
+        if ((GUILD_INFO[playerName]) and (TEMP_GUILD_INFO[playerName])) and (ShowPopUp == true) and (GUILD_INFO[playerName]["Level"] ~= TEMP_GUILD_INFO[playerName]["Level"]) and (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
             -- Update GUILD_INFO
             GUILD_INFO[playerName].Level = TEMP_GUILD_INFO[playerName]["Level"]
             GUILD_INFO[playerName].Updated = date()
@@ -373,7 +374,7 @@ function GuildUpdateRoster()
 -- ===================================== Did public note change ? =====================================
 
         -- Did the Public note change and is it someone from this guild ?
-        if (GUILD_INFO[playerName]) and (ShowPopUp == true) and (GUILD_INFO[playerName]["PublicNote"] ~= TEMP_GUILD_INFO[playerName]["PublicNote"]) and  (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
+        if ((GUILD_INFO[playerName]) and (TEMP_GUILD_INFO[playerName])) and (ShowPopUp == true) and (GUILD_INFO[playerName]["PublicNote"] ~= TEMP_GUILD_INFO[playerName]["PublicNote"]) and  (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
             -- Update GUILD_INFO
             GUILD_INFO[playerName].PublicNote = TEMP_GUILD_INFO[playerName]["PublicNote"]
             GUILD_INFO[playerName].Updated = date()
@@ -400,7 +401,7 @@ function GuildUpdateRoster()
 -- ============================== Has someone been offline for to long ? ==============================
 
         -- We need to check everyone in the guild, so we start with checking that it is someone from the guild.
-        if (GUILD_INFO[playerName]) and (ShowPopUp == true) and (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
+        if ((GUILD_INFO[playerName]) and (TEMP_GUILD_INFO[playerName])) and (ShowPopUp == true) and (GUILD_INFO[playerName]["GuildName"] == strGuildName) then
             -- A local
             local FoundSomeone = false
             -- 
@@ -442,7 +443,7 @@ function GuildUpdateRoster()
                     NewGuildActionKick = "----- TIME TO KICK -----\n"
                 end
                 -- Write the text.
-                NewGuildActionKick = NewGuildActionKick .. "The " .. playerData.Class .. " " .. Manager_ColorTheName(playerData.Class, playerName) .. " (" .. playerData.Level .. ") (" .. playerData.Rank .. ") has been offline for " .. TEMP_GUILD_INFO[playerName]["Offline"] .. " days.\n"
+                NewGuildActionKick = NewGuildActionKick .. "The " .. playerData.Class .. " " .. Manager_ColorTheName(playerData.Class, playerName) .. " (" .. playerData.Level .. ") (" .. playerData.Rank .. ") has been offline for " .. math.floor(TEMP_GUILD_INFO[playerName]["Offline"]) .. " days.\n"
                 -- Update GUILD_INFO
                 GUILD_INFO[playerName].Offline = TEMP_GUILD_INFO[playerName]["Offline"]
                 GUILD_INFO[playerName].Updated = date()
@@ -466,14 +467,6 @@ function GuildUpdateRoster()
 
         -- Check if we have the same names in both tables and it's the correct guild.
         if (not GUILD_INFO[playerName]) and (TEMP_GUILD_INFO[playerName]["GuildName"] == strGuildName) then
-            -- Someone joined the guild, add that info to GUILD_INFO, but make sure it's made first.
-            if (not GUILD_INFO) or (type(GUILD_INFO) ~= "table") then
-                GUILD_INFO = {}
-            end
-            if (not BANNED_FROM_GUILD) or (type(BANNED_FROM_GUILD) ~= "table") then
-                BANNED_FROM_GUILD = {}
-            end
-
             -- Check if it a person there is banned from the guild, if so, then inform and kick.
             if (BANNED_FROM_GUILD[playerName]) then
                 -- Get a date people understand.
@@ -492,7 +485,6 @@ function GuildUpdateRoster()
             else
                 -- Only do it if we want to show it.
                 if (ShowPopUp == true) then
-
                     -- 
                     GUILD_INFO[playerName] = {
                         ["GuildName"] = strGuildName,
@@ -520,6 +512,15 @@ function GuildUpdateRoster()
         end
     end
 
+    -- Count all the line we have, we use it in interface to see how big we want the scroll frame.
+    TotalCountedLines = LeaveCounter + PromoteCounter + DemoteCounter + KickCounter + OfficerNoteCounter + JoinCounter
+    -- Check that we don't have to few.
+    if (TotalCountedLines <= frame:GetHeight()) then
+        TotalCountedLines = frame:GetHeight()
+    else
+        TotalCountedLines = (TotalCountedLines * 8)
+    end
+    -- DEFAULT_CHAT_FRAME:AddMessage(TotalCountedLines);
     -- Make the text, if there is something to make.
     MakeTheText()
 
@@ -529,7 +530,7 @@ end
 -- =                                      Put all text together.                                      =
 -- ====================================================================================================
 
-function MakeTheText()
+function MakeTheText(LinesTotal)
 
     -- Make sure old info is deleted
     NewGuildAction = nil
@@ -588,9 +589,17 @@ function MakeTheText()
     if (ShowPopUp == false) and (NewGuildActionOfficerNote) and (NewGuildActionLeft == nil) and (NewGuildActionJoin == nil) and (NewGuildActionPromote == nil) and (NewGuildActionDemote == nil) and (NewGuildActionKick == nil) then
         -- Print in chat that the info about Officer note changed.
         DEFAULT_CHAT_FRAME:AddMessage(NewGuildAction);
+        ManagerPlusText:SetText(NewGuildAction);
+        ManagerPlusScrollbar:SetMinMaxValues(0, TotalCountedLines); -- Normalize scroll value
+        ManagerPlusContent:SetHeight(TotalCountedLines); -- Make it taller than the scrollframe for scrolling
+        frame:Hide();
     elseif (ShowPopUp == true) and (NewGuildAction) then
         -- 
         DEFAULT_CHAT_FRAME:AddMessage(NewGuildAction);
+        ManagerPlusText:SetText(NewGuildAction);
+        ManagerPlusScrollbar:SetMinMaxValues(0, TotalCountedLines); -- Normalize scroll value
+        ManagerPlusContent:SetHeight(TotalCountedLines); -- Make it taller than the scrollframe for scrolling
+        frame:Show();
         -- 
         ShowPopUp = false
     end
@@ -610,345 +619,108 @@ end
 -- ====================================================================================================
 
 
---local myFrame = CreateFrame("Frame", "MySimpleFrame", UIParent);
-myFrame:SetScript("OnLoad", function(self)
-    self:SetSize(200, 150);
-    self:SetPoint("CENTER");
-    self:Show();
-end);
-
-
-function ManagerInterface()
---[[
-    -- Set frame size and position
-    myFrame:SetSize(200, 150); -- Width: 200, Height: 150 (adjust as needed)
-    myFrame:SetPoint("CENTER"); -- Center the frame on the screen
-
-    -- Set frame title (optional)
-    myFrame:SetTitle("My Simple Frame", true); -- true means the title is movable
-
-    -- Make the frame movable
-    myFrame:SetMovable(true);
-    myFrame:EnableMouseDrag(true);
-    myFrame:SetClampedToScreen(true); --Keeps the frame on the screen.
-
-    -- Set a background (optional)
-    myFrame:SetBackdrop({
-        bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-        edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-        tile = true,
-        tileSize = 16,
-        edgeSize = 16,
-        insets = { left = 4, right = 4, top = 4, bottom = 4 }
-    });
-    myFrame:SetBackdropColor(0, 0, 0, 0.8); --Semi-transparent black background
-
-    -- Show the frame
-    myFrame:Show();
-
-    -- Example Close Button.
-    closeButton:SetSize(32, 32);
-    closeButton:SetPoint("TOPRIGHT", myFrame, "TOPRIGHT", -5, -5);
-    closeButton:SetNormalTexture("Interface/Buttons/UI-Panel-MinimizeButton-Up");
-    closeButton:SetHighlightTexture("Interface/Buttons/UI-Panel-MinimizeButton-Highlight");
-    closeButton:SetScript("OnClick", function() myFrame:Hide(); end);
-    closeButton:Show();
-]]--
-end
-
-
---[[
-
-
-
-
-
-
-
-
-
-
-function ManagerInterface()
-    frame:SetSize(400, 300);
-    frame:SetPoint("CENTER");
-    frame:SetTitle("Guild Member Information", true);
-    frame:SetMovable(true);
-    frame:SetClampedToScreen(true);
-    frame:EnableMouseDrag(true);
-    frame:SetUserPlaced(true);
-    frame:SetBackdrop({
-        bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-        edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-        tile = true,
-        tileSize = 16,
-        edgeSize = 16,
-        insets = { left = 4, right = 4, top = 4, bottom = 4 }
-    });
-    frame:SetBackdropColor(0, 0, 0, 0.8);
-    frame:Show();
-    -- 
-    scrollFrame:SetSize(380, 250);
-    scrollFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 10, -30);
-    -- 
-    scrollFrame:SetScrollChild(scrollChild);
-
-    print("GuildMemberInfoScrollChild created:", scrollChild); -- Debug print
-
-    -- Create the close button
-    
-    closeButton:SetSize(32, 32);
-    closeButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -5, -5);
-    closeButton:SetNormalTexture("Interface/Buttons/UI-Panel-MinimizeButton-Up");
-    closeButton:SetHighlightTexture("Interface/Buttons/UI-Panel-MinimizeButton-Highlight");
-    closeButton:SetScript("OnClick", function() frame:Hide(); end);
-
-    -- Example button to show the frame (for testing)
-    testButton:SetSize(100, 30);
-    testButton:SetPoint("CENTER", UIParent, "CENTER", 0, 0);
-    testButton:SetText("Show Guild Info");
-    testButton:SetScript("OnClick", function() ShowGuildMemberInfo(exampleGuildData); end);
-    testButton:Show();
-
-end
-
--- Example usage (replace with your actual guild data)
-local exampleGuildData = {
-    ["JohnDoe"] = {
-        Rank = "Leader",
-        Level = 60,
-        Class = "Warrior"
-    },
-    ["JaneSmith"] = {
-        Rank = "Officer",
-        Level = 58,
-        Class = "Mage"
-    },
-    ["BobBuilder"] = {
-        Rank = "Member",
-        Level = 55,
-        Class = "Hunter"
-    },
-    -- Add more guild members here
-};
-
--- Function to populate the scroll frame with guild member data
-function PopulateGuildMemberInfo(guildData)
-    local scrollChild = GuildMemberInfoScrollChild;
-    print("PopulateGuildMemberInfo scrollChild:", scrollChild); -- Debug print
-    if scrollChild then
-        for i, memberData in pairs(scrollChild:GetChildren()) do
-            memberData:Hide();
-        end
-
-        local yOffset = 0;
-        for playerName, data in pairs(guildData) do
-            local memberFrame = CreateFrame("Frame", nil, scrollChild);
-            memberFrame:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, yOffset);
-            memberFrame:SetSize(360, 20);
-
-            local nameLabel = memberFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal");
-            nameLabel:SetPoint("LEFT", memberFrame, "LEFT", 5, 0);
-            nameLabel:SetText(playerName);
-
-            local rankLabel = memberFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal");
-            rankLabel:SetPoint("LEFT", nameLabel, "RIGHT", 10, 0);
-            rankLabel:SetText("Rank: " .. data.Rank);
-
-            local levelLabel = memberFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal");
-            levelLabel:SetPoint("LEFT", rankLabel, "RIGHT", 10, 0);
-            levelLabel:SetText("Level: " .. data.Level);
-
-            local classLabel = memberFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal");
-            classLabel:SetPoint("LEFT", levelLabel, "RIGHT", 10, 0);
-            classLabel:SetText("Class: " .. data.Class);
-
-            memberFrame:Show();
-            yOffset = yOffset - 20;
-        end
-        scrollChild:SetSize(360, -yOffset);
-        scrollFrame:SetVerticalScroll(0);
-    else
-        print("Error: GuildMemberInfoScrollChild is nil");
-    end
-end
-
--- Function to show the frame and populate data (example)
-function ShowGuildMemberInfo(guildData)
-    PopulateGuildMemberInfo(guildData);
-    frame:Show();
-
-end
-
-
-
-
---]]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
---[[
-
-
-
+-- Some locals
+local NewScrollValue = 0
 
 -- Create the main frame
-local myFrame = CreateFrame("Frame", "ManagerPlusFrame", UIParent);
-myFrame:SetWidth(300);
-myFrame:SetHeight(450);
-myFrame:SetPoint("CENTER", 0, 0);
-myFrame:SetFrameStrata("DIALOG");
-myFrame:SetClampedToScreen(true);
-myFrame:SetMovable(true);
-myFrame:EnableMouse(true);
-myFrame:RegisterForDrag("LeftButton");
-myFrame:SetScript("OnDragStart", function() this:StartMoving(); end);
-myFrame:SetScript("OnDragStop", function() this:StopMovingOrSizing(); end);
-myFrame:SetBackdrop({ bgFile = "Interface/Tooltips/UI-Tooltip-Background", edgeFile = "Interface/Tooltips/UI-Tooltip-Border", tile = true, tileSize = 16, edgeSize = 16, insets = { left = 4, right = 4, top = 4, bottom = 4 } });
-myFrame:SetBackdropColor(0, 0, 0, 0.9);
-myFrame:Show();
+frame = CreateFrame("Frame", "ManagerPlus", UIParent);
+frame:SetWidth(400);
+frame:SetHeight(250);
+frame:SetPoint("CENTER", 0, 0);
+frame:SetFrameStrata("DIALOG");
+frame:SetClampedToScreen(true);
+frame:SetMovable(true);
+frame:EnableMouse(true);
+frame:RegisterForDrag("LeftButton");
+frame:SetScript("OnDragStart", function()
+    this:StartMoving();
+end);
+frame:SetScript("OnDragStop", function()
+    this:StopMovingOrSizing();
+end);
+frame:SetBackdrop({
+    bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+    edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+    tile = true,
+    tileSize = 16,
+    edgeSize = 16,
+    insets = {
+        left = 4,
+        right = 4,
+        top = 4,
+        bottom = 4
+    }
+});
+frame:SetBackdropColor(0, 0, 0, 0.9);
+frame:Hide();
 
 -- Close button.
-local closeButton = CreateFrame("Button", nil, myFrame, "UIPanelCloseButton");
+local closeButton = CreateFrame("Button", nil, frame, "UIPanelCloseButton");
 closeButton:SetWidth(32);
 closeButton:SetHeight(32);
-closeButton:SetPoint("TOPRIGHT", myFrame, "TOPRIGHT", 0, 0);
-closeButton:SetScript("OnClick", function() myFrame:Hide(); end);
+closeButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 2, 0);
+closeButton:SetScript("OnClick", function()
+    frame:Hide();
+end);
 closeButton:Show();
 
--- Headline (Bigger and Centered)
-local headline = myFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge");
-headline:SetPoint("TOP", myFrame, "TOP", 0, -10);
-headline:SetText("Manager+ Information");
-headline:SetJustifyH("CENTER");
+-- Create the scroll frame
+local scrollframe = CreateFrame("ScrollFrame", nil, frame);
+scrollframe:SetPoint("TOPLEFT", 10, -10);
+scrollframe:SetPoint("BOTTOMRIGHT", -26, 10); -- Adjusted to make room for ManagerPlusScrollbar
+scrollframe:EnableMouseWheel(true)
+scrollframe:Show();
 
--- Tab Frame
-local tabFrame = CreateFrame("Frame", nil, myFrame);
-tabFrame:SetHeight(30);
-tabFrame:SetWidth(myFrame:GetWidth());
-tabFrame:SetPoint("BOTTOM", myFrame, "BOTTOM", 0, -30);
+-- Create the ManagerPlusScrollbar
+ManagerPlusScrollbar = CreateFrame("Slider", nil, scrollframe, "UIPanelScrollBarTemplate");
+ManagerPlusScrollbar:SetPoint("TOPLEFT", scrollframe, "TOPRIGHT", 4, -40);
+ManagerPlusScrollbar:SetPoint("BOTTOMLEFT", scrollframe, "BOTTOMRIGHT", 4, 16);
+ManagerPlusScrollbar:SetHeight(frame:GetHeight());
+ManagerPlusScrollbar:SetValueStep(20);
+ManagerPlusScrollbar:SetValue(0);
+ManagerPlusScrollbar:SetWidth(16);
+ManagerPlusScrollbar:Show();
 
--- Tab Buttons with Basic Textures
-local tab1 = CreateFrame("Button", nil, tabFrame, "UIPanelButtonTemplate");
-tab1:SetWidth(tabFrame:GetWidth() / 3 - 4);
-tab1:SetHeight(tabFrame:GetHeight() - 4);
-tab1:SetPoint("LEFT", tabFrame, "LEFT", 2, 2);
-tab1:SetText("Action Log");
+-- Create the ManagerPlusContent frame
+ManagerPlusContent = CreateFrame("Frame", nil, scrollframe);
+ManagerPlusContent:SetWidth(frame:GetWidth() - 20); -- Adjust as needed
+scrollframe:SetScrollChild(ManagerPlusContent);
 
-local tab2 = CreateFrame("Button", nil, tabFrame, "UIPanelButtonTemplate");
-tab2:SetWidth(tabFrame:GetWidth() / 3 - 4);
-tab2:SetHeight(tabFrame:GetHeight() - 4);
-tab2:SetPoint("LEFT", tab1, "RIGHT", 4, 0);
-tab2:SetText("History");
+-- Mouse scrolling
+scrollframe:SetScript("OnMouseWheel", function()
+    -- Check how much we max scroll
+    local maxScrollOffset = ManagerPlusContent:GetHeight();
 
-local tab3 = CreateFrame("Button", nil, tabFrame, "UIPanelButtonTemplate");
-tab3:SetWidth(tabFrame:GetWidth() / 3 - 4);
-tab3:SetHeight(tabFrame:GetHeight() - 4);
-tab3:SetPoint("LEFT", tab2, "RIGHT", 4, 0);
-tab3:SetText("Settings");
+    -- Check if NewScrollValue is 0
+    if (NewScrollValue == nil) then
+        NewScrollValue = 0
+    end
 
--- Content Frames (for each tab)
-local content1 = CreateFrame("Frame", nil, myFrame);
-content1:SetPoint("TOPLEFT", myFrame, "TOPLEFT", 10, -headline:GetHeight() - 20);
-content1:SetPoint("BOTTOMRIGHT", tabFrame, "TOPRIGHT", -10, 0);
-content1:Show();
+    -- Check if we scroll up or down
+    if (arg1 == 1) then
+        NewScrollValue = NewScrollValue - 20
+    else
+        NewScrollValue = NewScrollValue + 20
+    end
 
-local content2 = CreateFrame("Frame", nil, myFrame);
-content2:SetPoint("TOPLEFT", myFrame, "TOPLEFT", 10, -headline:GetHeight() - 20);
-content2:SetPoint("BOTTOMRIGHT", tabFrame, "TOPRIGHT", -10, 0);
-content2:Hide();
+    -- Check that NewScrollValue is not below 0 or above maxScrollOffset
+    if (NewScrollValue <= 0) then
+        NewScrollValue = 0
+    elseif (NewScrollValue >= maxScrollOffset) then
+        NewScrollValue = maxScrollOffset
+    end
 
-local content3 = CreateFrame("Frame", nil, myFrame);
-content3:SetPoint("TOPLEFT", myFrame, "TOPLEFT", 10, -headline:GetHeight() - 20);
-content3:SetPoint("BOTTOMRIGHT", tabFrame, "TOPRIGHT", -10, 0);
-content3:Hide();
+    if (ManagerPlusContent:GetHeight() >= frame:GetHeight()) then
+        ManagerPlusScrollbar:SetValue(NewScrollValue);
+    else
+        ManagerPlusScrollbar:SetValue(0);
+        ManagerPlusScrollbar:Hide();
+    end
+end)
 
--- Tab Click Handlers
-tab1:SetScript("OnClick", function()
-    content1:Show();
-    content2:Hide();
-    content3:Hide();
-end);
+-- Add some text to the ManagerPlusContent frame (for testing)
+ManagerPlusText = ManagerPlusContent:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+ManagerPlusText:SetPoint("TOPLEFT", ManagerPlusContent, "TOPLEFT", 5, -2);
+-- ManagerPlusText:SetText("This is some text.\n\nLine 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8\nLine 9\nLine 10\nLine 11\nLine 12\nLine 13\nLine 14\nLine 15\nLine 16\nLine 17\nLine 18\nLine 19\nLine 20\nLine 21\nLine 22\nLine 23\nLine 24\nLine 25\nLine 26\nLine 27\nLine 28\nLine 29\nLine 30\nLine 31\nLine 32\nLine 33\nLine 34\nLine 35\nLine 36\nLine 37\nLine 38\nLine 39\nLine 40\nLine 41\nLine 42\nLine 43\nLine 44\nLine 45\nLine 46\nLine 47\nLine 48\nLine 49\nLine 50");
+ManagerPlusText:SetJustifyH("LEFT");
 
-tab2:SetScript("OnClick", function()
-    content1:Hide();
-    content2:Show();
-    content3:Hide();
-end);
-
-tab3:SetScript("OnClick", function()
-    content1:Hide();
-    content2:Hide();
-    content3:Show();
-end);
-
--- Initial Content (Tab 1)
-local text1 = content1:CreateFontString(nil, "OVERLAY", "GameFontNormal");
-text1:SetPoint("TOPLEFT", content1, "TOPLEFT", 0, 0);
-text1:SetText("Content for\nTab 1.\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrollingContent for\nTab 1.\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrollingContent for\nTab 1.\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrollingContent for\nTab 1.\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrollingContent for\nTab 1.\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrollingContent for\nTab 1.\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling");
-text1:SetJustifyH("LEFT");
-
--- Content for Tab 2
-local text2 = content2:CreateFontString(nil, "OVERLAY", "GameFontNormal");
-text2:SetPoint("TOPLEFT", content2, "TOPLEFT", 0, 0);
-text2:SetText("Content for Tab 2.\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling");
-text2:SetJustifyH("LEFT");
-
--- Content for Tab 3
-local text3 = content3:CreateFontString(nil, "OVERLAY", "GameFontNormal");
-text3:SetPoint("TOPLEFT", content3, "TOPLEFT", 0, 0);
-text3:SetText("Content for Tab 3.\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling\nVery long text to show scrolling");
-text3:SetJustifyH("LEFT");
-
--- Show all tabs
-tab1:Show()
-tab2:Show()
-tab3:Show()
-
-
-
-
-
-
-
-
-
-
---]]
