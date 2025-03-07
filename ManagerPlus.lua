@@ -94,6 +94,20 @@ f:SetScript("OnUpdate", function()
     if ((LogInTime + 4) < GetTime()) and (SayWelcome == true) then
         DEFAULT_CHAT_FRAME:AddMessage("|cff3333ff" .. AddonName .. " by " .. "|r" .. "|cFF06c51b" .. "Subby" .. "|r" .. "|cff3333ff" .. " is loaded." .. "|r");
         SayWelcome = false
+        --Update the guild roster.
+        GuildRoster();
+        -- Get the guild name of the guild we are in, if any.
+        strGuildName = GetGuildInfo("player");
+        -- Do we have the tables we need to save guild info, if not then we create them.
+        if (not GUILD_INFO) or (not type(GUILD_INFO) == "table") then
+            GUILD_INFO = {}
+        end
+        if (not BANNED_FROM_GUILD) or (not type(BANNED_FROM_GUILD) == "table") then
+            BANNED_FROM_GUILD = {}
+        end
+        if (not GUILD_INFO_HISTORY) or (not type(GUILD_INFO_HISTORY) == "table") then
+            GUILD_INFO_HISTORY = {}
+        end
     end
 
     -- Run the roster for the first time.
@@ -595,7 +609,6 @@ function MakeTheText(LinesTotal)
         frame:Hide();
     elseif (ShowPopUp == true) and (NewGuildAction) then
         -- 
-        DEFAULT_CHAT_FRAME:AddMessage(NewGuildAction);
         ManagerPlusText:SetText(NewGuildAction);
         ManagerPlusScrollbar:SetMinMaxValues(0, TotalCountedLines); -- Normalize scroll value
         ManagerPlusContent:SetHeight(TotalCountedLines); -- Make it taller than the scrollframe for scrolling
