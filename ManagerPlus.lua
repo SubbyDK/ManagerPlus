@@ -4,53 +4,54 @@
 -- https://www.hiveworkshop.com/threads/is-there-a-max-number-of-variables.40945/
 
 -- Some locals
-local AddonName = "ManagerPlus"                     -- Addon name.
-local LogInTime = GetTime()                         -- Used for the welcome message and when the frame has to be shown.
-local RunFirstGuildCheck = true                     -- True so we know when to run first check.
-local RunFirstGuildCheckTime = GetTime()            -- Used for running the first check of the guild.
-local RunTime = GetTime()                           -- Used for how often we have to run the check to save new info.
-local SayWelcome = true                             -- Do we want to show the welcome message and the frame with updates.
-local strGuildName                                  -- To save our guild name.
-local ShowPopUp = true                              -- Used for deciding if we show the popup or not.
+local AddonName = "ManagerPlus"                                 -- Addon name.
+local AddonVersion = GetAddOnMetadata(AddonName, "Version")     -- The version of the addon.
+local LogInTime = GetTime()                                     -- Used for the welcome message and when the frame has to be shown.
+local RunFirstGuildCheck = true                                 -- True so we know when to run first check.
+local RunFirstGuildCheckTime = GetTime()                        -- Used for running the first check of the guild.
+local RunTime = GetTime()                                       -- Used for how often we have to run the check to save new info.
+local SayWelcome = true                                         -- Do we want to show the welcome message and the frame with updates.
+local strGuildName                                              -- To save our guild name.
+local ShowPopUp = true                                          -- Used for deciding if we show the popup or not.
 
-local NewGuildAction                                -- Used to collect all new text about the guild.
-local NewGuildActionLeft                            -- Used for the text about someone who left the guild.
-local NewGuildActionJoin                            -- Used for the text about someone who joined the guild.
-local NewGuildActionPromote                         -- Used for the text about someone who got promoted in the guild.
-local NewGuildActionTimeToPromote                   -- Used for the text about if it's time to promote someone.
-local NewGuildActionDemote                          -- Used for the text about someone who got demoted in the guild.
-local NewGuildActionKick                            -- Used for the text about someone who have been offline for to long and have to be kicked.
-local NewGuildActionOfficerNote                     -- Used for the text about someone who had Officer note changed.
+local NewGuildAction                                            -- Used to collect all new text about the guild.
+local NewGuildActionLeft                                        -- Used for the text about someone who left the guild.
+local NewGuildActionJoin                                        -- Used for the text about someone who joined the guild.
+local NewGuildActionPromote                                     -- Used for the text about someone who got promoted in the guild.
+local NewGuildActionTimeToPromote                               -- Used for the text about if it's time to promote someone.
+local NewGuildActionDemote                                      -- Used for the text about someone who got demoted in the guild.
+local NewGuildActionKick                                        -- Used for the text about someone who have been offline for to long and have to be kicked.
+local NewGuildActionOfficerNote                                 -- Used for the text about someone who had Officer note changed.
 
-local JoinCounter                                   -- Used for checking if we making a headline or not.
-local LeaveCounter                                  -- Used for checking if we making a headline or not.
-local PromoteCounter                                -- Used for checking if we making a headline or not.
-local DemoteCounter                                 -- Used for checking if we making a headline or not.
-local KickCounter                                   -- Used for checking if we making a headline or not.
-local OfficerNoteCounter                            -- Used for checking if we making a headline or not.
-local TimeToPromoteCounter                          -- Used for checking if we making a headline or not.
-local TotalCountedLines = 0                         -- Used in interface to see how big the scroll frame have to be.
+local JoinCounter                                               -- Used for checking if we making a headline or not.
+local LeaveCounter                                              -- Used for checking if we making a headline or not.
+local PromoteCounter                                            -- Used for checking if we making a headline or not.
+local DemoteCounter                                             -- Used for checking if we making a headline or not.
+local KickCounter                                               -- Used for checking if we making a headline or not.
+local OfficerNoteCounter                                        -- Used for checking if we making a headline or not.
+local TimeToPromoteCounter                                      -- Used for checking if we making a headline or not.
+local TotalCountedLines = 0                                     -- Used in interface to see how big the scroll frame have to be.
 
-local intKickRankIndex0 = 90                        -- Ask a Game Master for the Guild Master rank, only Officers can ask that.
-local intKickRankIndex1 = intKickRankIndex1 or 30   -- Kick Officer after this amount of days.
-local intKickRankIndex2 = intKickRankIndex2 or 30   -- Kick Officer Alt after this amount of days.
-local intKickRankIndex3 = intKickRankIndex3 or 30   -- Kick Raid Leader after this amount of days.
-local intKickRankIndex4 = intKickRankIndex4 or 30   -- Kick Raider after this amount of days.
-local intKickRankIndex5 = intKickRankIndex5 or 30   -- Kick Social after this amount of days.
-local intKickRankIndex6 = intKickRankIndex6 or 30   -- Kick Alt after this amount of days.
-local intKickRankIndex7 = intKickRankIndex7 or 14   -- Kick Trial after this amount of days.
-local intKickRankIndex8 = intKickRankIndex8 or 1    -- Kick Unknown after this amount of days.
-local intKickRankIndex9 = intKickRankIndex9 or 1    -- Kick Unknown after this amount of days.
+local intKickRankIndex0 = 90                                    -- Ask a Game Master for the Guild Master rank, only Officers can ask that.
+local intKickRankIndex1 = intKickRankIndex1 or 30               -- Kick Officer after this amount of days.
+local intKickRankIndex2 = intKickRankIndex2 or 30               -- Kick Officer Alt after this amount of days.
+local intKickRankIndex3 = intKickRankIndex3 or 30               -- Kick Raid Leader after this amount of days.
+local intKickRankIndex4 = intKickRankIndex4 or 30               -- Kick Raider after this amount of days.
+local intKickRankIndex5 = intKickRankIndex5 or 30               -- Kick Social after this amount of days.
+local intKickRankIndex6 = intKickRankIndex6 or 30               -- Kick Alt after this amount of days.
+local intKickRankIndex7 = intKickRankIndex7 or 14               -- Kick Trial after this amount of days.
+local intKickRankIndex8 = intKickRankIndex8 or 1                -- Kick Unknown after this amount of days.
+local intKickRankIndex9 = intKickRankIndex9 or 1                -- Kick Unknown after this amount of days.
 
-local TimeToPromote = TimeToPromote or 14           -- When someone should be promoted from the trial rank (Lowest rank in the guild).
+local TimeToPromote = TimeToPromote or 14                       -- When someone should be promoted from the trial rank (Lowest rank in the guild).
 
-local highestRankIndex = -10                        -- Used to find the highest Guild RankIndex (Lowest rank) in the guild.
+local highestRankIndex = -10                                    -- Used to find the highest Guild RankIndex (Lowest rank) in the guild.
 
--- Create frame(s).
+-- ====================================================================================================
+-- =                                Create frame(s) and Register event                                =
+-- ====================================================================================================
+
 local f = CreateFrame("Frame")
--- Create the main frame
--- local myFrame = CreateFrame("Frame", "MySimpleFrame", UIParent);
--- local closeButton = CreateFrame("Button", "MySimpleFrameCloseButton", myFrame); -- The close button
 
 f:RegisterEvent("ADDON_LOADED");
 f:RegisterEvent("GUILD_ROSTER_UPDATE");
@@ -60,7 +61,7 @@ f:RegisterEvent("PLAYER_GUILD_UPDATE");
 -- =                                          Event handler.                                          =
 -- ====================================================================================================
 
-f:SetScript("OnEvent", function(self, event, arg1, ...)
+f:SetScript("OnEvent", function()
     if (event == "ADDON_LOADED") and (arg1 == AddonName) then
         --Update the guild roster.
         GuildRoster();
@@ -69,9 +70,11 @@ f:SetScript("OnEvent", function(self, event, arg1, ...)
         -- Unregister the event as we don't need it anymore.
         f:UnregisterEvent("ADDON_LOADED");
     elseif event == "GUILD_ROSTER_UPDATE" then
-        GuildUpdateRoster()
+        -- DEFAULT_CHAT_FRAME:AddMessage("Run");
+        -- GuildUpdateRoster()
     elseif event == "PLAYER_GUILD_UPDATE" then
-        GuildUpdateRoster()
+        -- DEFAULT_CHAT_FRAME:AddMessage("Run again");
+        -- GuildUpdateRoster()
     end
 end);
 
@@ -118,7 +121,7 @@ SLASH_MANAGERPLUS1 = "/m+", "/mp", "/managerplus";
 SlashCmdList["MANAGERPLUS"] = function(msg)
 
     -- 
-    local command, playerName, reason = string.match(msg, "^(ban)%s+(%S+)%s+(.+)$");
+    --local command, playerName, reason = string.match(msg, "^(ban)%s+(%S+)%s+(.+)$");
 
     if (command == "ban") and (playerName) and (reason) then
 
@@ -1213,7 +1216,7 @@ function MakeTheHistoryText()
 
     -- As history will be the biggest we set the scroll value here.
     ManagerPlusScrollbar:SetMinMaxValues(0, (TotalCountedLines * 10));
-    ManagerPlusHistory:SetHeight(TotalCountedLines);
+    ManagerPlusHistory:SetHeight(TotalCountedLines * 10);
 
 end
 
@@ -1300,6 +1303,13 @@ ManagerPlusHistory:SetWidth(frame:GetWidth() - 20); -- Adjust as needed
 ManagerPlusHistory:SetPoint("TOPLEFT", scrollframe, "TOPLEFT", 0, 0)
 ManagerPlusHistory:SetPoint("BOTTOMRIGHT", scrollframe, "BOTTOMRIGHT", 0, 0)
 ManagerPlusHistory:Hide();
+
+ManagerPlusRaid = CreateFrame("Frame", nil, scrollframe);
+ManagerPlusRaid:SetWidth(frame:GetWidth() - 20); -- Adjust as needed
+ManagerPlusRaid:SetHeight(1000);
+ManagerPlusRaid:SetPoint("TOPLEFT", scrollframe, "TOPLEFT", 0, 0)
+ManagerPlusRaid:SetPoint("BOTTOMRIGHT", scrollframe, "BOTTOMRIGHT", 0, 0)
+ManagerPlusRaid:Hide();
 
 ManagerPlusSettings = CreateFrame("Frame", nil, scrollframe);
 ManagerPlusSettings:SetWidth(frame:GetWidth() - 20); -- Adjust as needed
@@ -1393,6 +1403,7 @@ local function createButton(name, xOffset, contentFrame)
         -- Show the associated content frame and hide others
         ManagerPlusNews:Hide();
         ManagerPlusHistory:Hide();
+        ManagerPlusRaid:Hide();
         ManagerPlusSettings:Hide();
         ManagerPlusAbout:Hide();
 
@@ -1419,8 +1430,9 @@ end
 -- Create the buttons with different content
 local button1 = createButton("News", 0, ManagerPlusNews);
 local button2 = createButton("History", buttonWidth - 4, ManagerPlusHistory);
-local button3 = createButton("Settings", (buttonWidth * 2) - 8, ManagerPlusSettings);
-local button4 = createButton("About", (buttonWidth * 3) - 12, ManagerPlusAbout);
+local button3 = createButton("Raid", (buttonWidth * 2) - 8, ManagerPlusRaid);
+local button4 = createButton("Settings", (buttonWidth * 3) - 12, ManagerPlusSettings);
+local button5 = createButton("About", (buttonWidth * 4) - 16, ManagerPlusAbout);
 
 -- Give first button a color so it looks like it has been clicked.
 if (not lastClickedButton) then
@@ -1430,29 +1442,47 @@ if (not lastClickedButton) then
     end
 end
 
+-- ====================================================================================================
+-- =                                             News tab                                             =
+-- ====================================================================================================
 
-
-
-
-
-
--- Add text to each content frame
 newsText = ManagerPlusNews:CreateFontString(nil, "OVERLAY", "GameFontNormal");
 newsText:SetPoint("TOPLEFT", ManagerPlusNews, "TOPLEFT", 5, -2);
 newsText:SetJustifyH("LEFT");
+
+-- ====================================================================================================
+-- =                                           History tab.                                           =
+-- ====================================================================================================
 
 historyText = ManagerPlusHistory:CreateFontString(nil, "OVERLAY", "GameFontNormal");
 historyText:SetPoint("TOPLEFT", ManagerPlusHistory, "TOPLEFT", 5, -2);
 historyText:SetJustifyH("LEFT");
 
+-- ====================================================================================================
+-- =                                             Raid tab                                             =
+-- ====================================================================================================
+
+local raidText = ManagerPlusRaid:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+raidText:SetPoint("TOP", ManagerPlusRaid, "TOP", 5, -2);
+raidText:SetText("GUILD RAID SETTINGS");
+raidText:SetJustifyH("CENTER");
+
+-- ====================================================================================================
+-- =                                           Settings tab                                           =
+-- ====================================================================================================
+
 local settingsText = ManagerPlusSettings:CreateFontString(nil, "OVERLAY", "GameFontNormal");
 settingsText:SetPoint("TOPLEFT", ManagerPlusSettings, "TOPLEFT", 5, -2);
-settingsText:SetText("No \"Settings\" yet.");
+settingsText:SetText("No \"Settings\" yet, but will come.");
 settingsText:SetJustifyH("LEFT");
+
+-- ====================================================================================================
+-- =                                            About tab.                                            =
+-- ====================================================================================================
 
 local aboutText = ManagerPlusAbout:CreateFontString(nil, "OVERLAY", "GameFontNormal");
 aboutText:SetPoint("TOPLEFT", ManagerPlusAbout, "TOPLEFT", 5, -2);
-aboutText:SetText("No \"About\" yet.");
+aboutText:SetText("Manager+ by Sybby - Version " .. AddonVersion .. ".");
 aboutText:SetJustifyH("LEFT");
 
 

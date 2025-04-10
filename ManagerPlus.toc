@@ -1,11 +1,12 @@
 ## Title: |cFFFFCC00Manager+|r|cFF00FF00 by Subby|r
 ## Interface: 11200
 ## Author: Subby
-## Version: 0.1
+## Version: 0.2
 ## DefaultState: enabled
 ## Notes: Helps you manage the guild.
 
-## SavedVariables: GUILD_INFO, GUILD_INFO_HISTORY, BANNED_FROM_GUILD
-## SavedVariablesPerCharacter: 
+## SavedVariables: SETTINGS, GUILD_INFO, GUILD_INFO_HISTORY, RAID_BAN, BANNED_FROM_GUILD
+## SavedVariablesPerCharacter: RAID_PROMOTE
 
 ManagerPlus.lua
+RaidManagerPlus.lua
