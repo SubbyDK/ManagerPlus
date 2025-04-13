@@ -94,7 +94,7 @@ function Settings()
     PromoteAllInRaid = SETTINGS["PromoteAllInRaid"] or false            -- Used to check if the checkbox in the raid frame is checked or not.
     InviteKeyWord = SETTINGS["AutoInviteKeyWord"] or "Inv"              -- 
     ConvertPartyToRaid = SETTINGS["ConvertPartyToRaid"] or false        -- 
-    AutoInviteOutOfGuild = SETTINGS["AutoInviteOutOfGuild"] or false    -- 
+    AutoInviteOutOfGuild = SETTINGS["AutoInviteOutOfGuild"] or false     -- 
 
     MakeTheDropDown()                                                   -- Make the dropdown in raid settings on what rank to promote.
 
@@ -152,7 +152,7 @@ function ManagerRaidRosterChanged()
                     -- Is it someone we have chosen to promote by guild rank ? If so, then we promote them, if they are not already promoted.
                     elseif (SETTINGS["PromoteGuildRank"]) and (GUILD_INFO[playerName]) and (GUILD_INFO[playerName]["RankIndex"] <= SETTINGS["PromoteGuildRank"]) and (raidRank == 0) then
                         PromoteToAssistant(playerName);
-                        -- Is it a name of a person we would like to promote ?
+                    -- Is it a name of a person we would like to promote ?
                     elseif (RAID_PROMOTE[playerName]) and (raidRank == 0) then
                         PromoteToAssistant(playerName);
                     end
@@ -263,6 +263,10 @@ function InviteOnWhisper(message, sender)
             -- Invite the person.
             InviteByName(sender)
         else
+            -- Is it someone from guild and do we want to invite from out side the guild ?
+            if (not GUILD_INFO[sender]) and (AutoInviteOutOfGuild == false) then
+                return;
+            end
             -- Invite the person.
             InviteByName(sender)
         end
@@ -320,11 +324,6 @@ end
 
 function MakeTheDropDown()
 
-    -- Are we in a guild, if not we stop.
-    if (not IsInGuild()) then
-        return;
-    end
-
     -- Create the dropdown
     local dropDown = CreateFrame("Frame", "GuildRankPromoteDropdown", ManagerPlusRaid, "UIDropDownMenuTemplate");
         dropDown:SetPoint("TOPLEFT", ManagerPlusRaid, "TOPLEFT", 0, -30);
@@ -368,13 +367,17 @@ function MakeTheDropDown()
                 UIDropDownMenu_AddButton(info);
             end
         end
-        -- Set the selected value on initialization
+
+        -- Set the selected value on initialization.
         if (SETTINGS["PromoteGuildRank"]) then
             rankName = GuildControlGetRankName(SETTINGS["PromoteGuildRank"] + 1);
             if (rankName) then
                 UIDropDownMenu_SetSelectedValue(dropDown, SETTINGS["PromoteGuildRank"] + 1);
                 UIDropDownMenu_Refresh(dropDown);
             end
+        else
+            UIDropDownMenu_SetText("Select rank", dropDown);
+            UIDropDownMenu_Refresh(dropDown);
         end
 
     end)
@@ -423,6 +426,7 @@ function AutoInviteKeyWordFrame()
         saveButton:SetText("Save");
         saveButton:SetScript("OnClick", function()
             SETTINGS.AutoInviteKeyWord = invKeyWordBox:GetText()
+            InviteKeyWord = invKeyWordBox:GetText()
             invKeyWordBox:ClearFocus()
         end);
 
@@ -469,6 +473,48 @@ function AutoConvertToRaid()
         PromoteAllText:SetJustifyH("LEFT");
 
     -- 
+    OnlyAutoInviteGuildMembers()
+
+end
+
+-- ====================================================================================================
+-- =                                  Invite guild members olny box.                                  =
+-- ====================================================================================================
+
+function OnlyAutoInviteGuildMembers()
+
+    local GuildOnlyCheckButton = CreateFrame("CheckButton", nil, ManagerPlusRaid, "UICheckButtonTemplate");
+        GuildOnlyCheckButton:SetWidth(20);
+        GuildOnlyCheckButton:SetHeight(20);
+        GuildOnlyCheckButton:SetPoint("TOPLEFT", "ManagerPlusRaid", "TOPLEFT", 19, -180);
+        -- 
+        if (AutoInviteOutOfGuild == false) then
+            GuildOnlyCheckButton:SetChecked(1);
+        else
+            GuildOnlyCheckButton:SetChecked(0);
+        end
+
+        GuildOnlyCheckButton:SetScript("OnClick", function()
+            -- 
+            if (GuildOnlyCheckButton:GetChecked()) then
+                GuildOnlyCheckButton:SetChecked(1);
+                SETTINGS.AutoInviteOutOfGuild = false
+                AutoInviteOutOfGuild = false
+            -- 
+            else
+                GuildOnlyCheckButton:SetChecked(0);
+                SETTINGS.AutoInviteOutOfGuild = true
+                AutoInviteOutOfGuild = true
+            end
+        end)
+        GuildOnlyCheckButton:Show()
+
+    local GuildOnlyText = GuildOnlyCheckButton:CreateFontString(nil, "OVERLAY", "GameFontNormal");
+        GuildOnlyText:SetPoint("BOTTOMLEFT", GuildOnlyCheckButton, "TOPLEFT", 0, 0);
+        GuildOnlyText:SetText("Only auto invite guild members.");
+        GuildOnlyText:SetJustifyH("LEFT");
+
+    -- 
     PromoteChosenPeopleFrame()
 
 end
@@ -513,18 +559,48 @@ function PromoteChosenPeopleFrame()
         editBox:SetMultiLine(true);
         editBox:SetMaxLetters(280)
         editBox:SetFontObject("ChatFontNormal")
-        if (1==1) then
-            editBox:SetText("Enter people here.");
+
+        -- Make sure the table is made.
+        if (not RAID_PROMOTE) or (not type(RAID_PROMOTE) == "table") then
+            RAID_PROMOTE = {}
         end
+
+        -- 
+        local TempNames
+        -- 
+        for playerName, _ in pairs(RAID_PROMOTE) do
+            -- 
+            if (not TempNames) then
+                TempNames = playerName
+            else
+                TempNames = TempNames .. ", " .. playerName
+            end
+        end
+        -- 
+        if (TempNames) then
+            editBox:SetText(TempNames);
+        else
+            editBox:SetText("Example:\nCrazytank, Lovelife, Smalldagger\n\n");
+        end
+
+        -- What will happen ehen escape is pressed.
         editBox:SetScript("OnEscapePressed", function()
             editBox:ClearFocus()
-            editBox.hasFocus = false
+        end)
+        editBox:SetScript("OnEnterPressed", function()
+            -- Not used, just here so I know I have the option if I ever need.
         end)
         editBox:SetScript("OnMouseDown", function()
-            editBox.hasFocus = true
+            -- Not used, just here so I know I have the option if I ever need.
+        end)
+        editBox:SetScript("OnEditFocusGained", function()
+            -- Not used, just here so I know I have the option if I ever need.
+        end)
+        editBox:SetScript("OnEditFocusLost", function()
+            -- Not used, just here so I know I have the option if I ever need.
         end)
         editBox:SetScript("OnTextChanged", function()
-            -- DEFAULT_CHAT_FRAME:AddMessage(editBox:GetText());
+            -- Not used, just here so I know I have the option if I ever need.
         end)
 
     -- Button to save the people we have added.
@@ -534,9 +610,34 @@ function PromoteChosenPeopleFrame()
         saveButton:SetPoint("TOPLEFT", editBox, "BOTTOMLEFT", 0, 0);
         saveButton:SetText("Save");
         saveButton:SetScript("OnClick", function()
-            DEFAULT_CHAT_FRAME:AddMessage(editBox:GetText());
+
+            local text = editBox:GetText();
+            -- Check that we got some test.
+            if (text) and (text ~= "") then
+                -- Make sure it's not just our example.
+                if (not string.find(text, "Crazytank")) and (not string.find(text, "Lovelife")) and (not string.find(text, "Smalldagger")) then
+                    -- Empty the table, easy way "cheat" if we only delete 1 person. ;)
+                    RAID_PROMOTE = {}
+                    -- Split the string by commas.
+                    for name in string.gmatch(text, "([^,]+)") do
+                        -- Trim whitespace from each name.
+                        local trimmedName = string.gsub(name, "^%s*(.-)%s*$", "%1");
+                        -- Insert to the RAID_PROMOTE table.
+                        RAID_PROMOTE[trimmedName] = {true,}
+                    end
+                -- It was our example.
+                else
+                    RAID_PROMOTE = nil
+                end
+            -- We got no text.
+            else
+                -- Delete the table as it's empty.
+                RAID_PROMOTE = nil
+            end
+
+            -- Clear focus from editBox.
             editBox:ClearFocus()
-            editBox.hasFocus = false
+
         end);
 
 end

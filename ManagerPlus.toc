@@ -5,7 +5,7 @@
 ## DefaultState: enabled
 ## Notes: Helps you manage the guild.
 
-## SavedVariables: SETTINGS, GUILD_INFO, GUILD_INFO_HISTORY, RAID_BAN, BANNED_FROM_GUILD
+## SavedVariables: SETTINGS, RAID_PROMOTE, RAID_BAN, GUILD_INFO, GUILD_INFO_HISTORY, BANNED_FROM_GUILD
 ## SavedVariablesPerCharacter: RAID_PROMOTE
 
 ManagerPlus.lua
