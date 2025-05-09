@@ -90,11 +90,16 @@ end)
 
 function Settings()
 
+    -- Again make sure the tables is made.
+    if (not SETTINGS) or (not type(SETTINGS) == "table") then
+        SETTINGS = {}
+    end
+
     GuildRoster()                                                       -- Run the GuildRoster() again.
     PromoteAllInRaid = SETTINGS["PromoteAllInRaid"] or false            -- Used to check if the checkbox in the raid frame is checked or not.
     InviteKeyWord = SETTINGS["AutoInviteKeyWord"] or "Inv"              -- 
     ConvertPartyToRaid = SETTINGS["ConvertPartyToRaid"] or false        -- 
-    AutoInviteOutOfGuild = SETTINGS["AutoInviteOutOfGuild"] or false     -- 
+    AutoInviteOutOfGuild = SETTINGS["AutoInviteOutOfGuild"] or false    -- 
 
     MakeTheDropDown()                                                   -- Make the dropdown in raid settings on what rank to promote.
 
