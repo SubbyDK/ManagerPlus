@@ -118,10 +118,9 @@ end)
 -- =                                          Slash commands                                          =
 -- ====================================================================================================
 
-SLASH_MANAGERPLUS1 = "/m+", "/mp", "/managerplus";
+SLASH_MANAGERPLUS1, SLASH_MANAGERPLUS2, SLASH_MANAGERPLUS3 = "/m+", "/mp", "/managerplus"
 SlashCmdList["MANAGERPLUS"] = function(msg)
 
-    -- 
     --local command, playerName, reason = string.match(msg, "^(ban)%s+(%S+)%s+(.+)$");
 
     if (command == "ban") and (playerName) and (reason) then
